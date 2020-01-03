@@ -3,10 +3,10 @@ library(magrittr)
 library(tidyverse)
 library(jsonlite)
 library(rvest)
-library(RODBC)
+#library(RODBC)
 library(lubridate)
-
-LOCAL <- odbcConnect("LOCAL")
+#predict the dividend of this year before the year report out
+#LOCAL <- odbcConnect("LOCAL")
 
 GetFinReport <- function(Url, Year, Season) {
     ResultAll <- tibble(r1 = list(), r2 = list(), r3 = list(), r4 = list(), r5 = list(), r6 = list(), year = integer(), season = integer())
@@ -15,7 +15,7 @@ GetFinReport <- function(Url, Year, Season) {
     url <- Url
     for (y in Year) {
         for (s in Season) {
-            postData <- paste0("encodeURIComponent=1&step=1&firstin=1&off=1&TYPEK=sii&year=", y, "&season=", s, "")
+            postData <- paste0("encodeURIComponent=1&step=1&firstin=1&off=1&isQuery=Y&TYPEK=sii&year=", y, "&season=", s, "")
             result <- POST(url, body = postData)
             html <- result %>% content(as = "text") %>% read_html()
             result <- html %>% html_table()
@@ -142,68 +142,76 @@ GetNumericReport <- function(Report) {
 
 
 #Income Statement
-Sys.setlocale("LC_ALL", "C")
-ISUrl <- "http://mops.twse.com.tw/mops/web/ajax_t163sb04"
-ISALL <- GetFinReport(ISUrl, c(107:107), c(3))
-IS107_3 <- ISALL %>% AggregateReport 
+GetIS <- function(Year,Season) {
+    Sys.setlocale("LC_ALL", "C")
+    ISUrl <- "https://mops.twse.com.tw/mops/web/ajax_t163sb04"
+    ISALL <- GetFinReport(ISUrl, Year, Season)
+    IS <- ISALL %>% AggregateReport
+    Sys.setlocale("LC_ALL", "cht")
+    IS
+}
+IS<-GetIS('107','03')
 Sys.setlocale("LC_ALL", "cht")
 
 
-saveRDS(IS106_3, file = "IS106_3.rds")
+#saveRDS(IS_last_year_3, file = "IS_last_year_3.rds")
 
 CleanData <- function(df) {
     df %>% map(~as.numeric(gsub(pattern = ",", replacement = "", .))) %>% as.tibble
 }
 
-IS106_3_1 <- IS106_3[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3_2 <- IS106_3[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3_3 <- IS106_3[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3_4 <- IS106_3[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3_5 <- IS106_3[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3_6 <- IS106_3[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_3 = 基本每股盈餘元)
-IS106_3 <- rbind(IS106_3_1, IS106_3_2, IS106_3_3, IS106_3_4, IS106_3_5, IS106_3_6) %>% select(公司代號, Profit106_3)
+IS_last_year_3 <- GetIS('107', '03')
+IS_last_year_4 <- GetIS('107', '04')
+IS_this_year_3 <- GetIS('108', '03')
 
-IS106_4_1 <- IS106_4[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4_2 <- IS106_4[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4_3 <- IS106_4[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4_4 <- IS106_4[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4_5 <- IS106_4[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4_6 <- IS106_4[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit106_4 = 基本每股盈餘元)
-IS106_4 <- rbind(IS106_4_1, IS106_4_2, IS106_4_3, IS106_4_4, IS106_4_5, IS106_4_6) %>% select(公司代號, Profit106_4)
+IS_last_year_3_1 <- IS_last_year_3[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3_2 <- IS_last_year_3[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3_3 <- IS_last_year_3[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3_4 <- IS_last_year_3[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3_5 <- IS_last_year_3[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3_6 <- IS_last_year_3[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_3 = `基本每股盈餘（元）`)
+IS_last_year_3 <- rbind(IS_last_year_3_1, IS_last_year_3_2, IS_last_year_3_3, IS_last_year_3_4, IS_last_year_3_5, IS_last_year_3_6) %>% select(公司代號, Profit_last_year_3)
+
+IS_last_year_4_1 <- IS_last_year_4[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4_2 <- IS_last_year_4[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4_3 <- IS_last_year_4[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4_4 <- IS_last_year_4[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4_5 <- IS_last_year_4[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4_6 <- IS_last_year_4[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_last_year_4 = `基本每股盈餘（元）`)
+IS_last_year_4 <- rbind(IS_last_year_4_1, IS_last_year_4_2, IS_last_year_4_3, IS_last_year_4_4, IS_last_year_4_5, IS_last_year_4_6) %>% select(公司代號, Profit_last_year_4)
 
 
 
-IS107_3_1 <- IS107_3[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3_2 <- IS107_3[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3_3 <- IS107_3[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3_4 <- IS107_3[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3_5 <- IS107_3[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3_6 <- IS107_3[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘元", "year", "season") %>% CleanData %>% rename(Profit107_3 = 基本每股盈餘元)
-IS107_3 <- rbind(IS107_3_1, IS107_3_2, IS107_3_3, IS107_3_4, IS107_3_5, IS107_3_6) %>% select(公司代號, Profit107_3)
+IS_this_year_3_1 <- IS_this_year_3[[1]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3_2 <- IS_this_year_3[[2]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3_3 <- IS_this_year_3[[3]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3_4 <- IS_this_year_3[[4]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3_5 <- IS_this_year_3[[5]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3_6 <- IS_this_year_3[[6]] %>% as.tibble %>% select("公司代號", "基本每股盈餘（元）", "year", "season") %>% CleanData %>% rename(Profit_this_year_3 = `基本每股盈餘（元）`)
+IS_this_year_3 <- rbind(IS_this_year_3_1, IS_this_year_3_2, IS_this_year_3_3, IS_this_year_3_4, IS_this_year_3_5, IS_this_year_3_6) %>% select(公司代號, Profit_this_year_3)
 
-ISReport <- IS107_3 %>% left_join(IS106_4) %>% left_join(IS106_3)
+ISReport <- IS_this_year_3 %>% left_join(IS_last_year_4) %>% left_join(IS_last_year_3)
 
 ISReport %>% View
 
 #Dividend
 
-Dividend106 <- read.csv(file = "C:/Users/user/Documents/Investment Plan/StockMarket/Dividend/Dividend106.csv.utf8", header = TRUE, row.names = NULL, encoding = "UTF-8", sep = ",", dec = ".", quote = "\"", comment.char = "") %>% as.tibble
-names(Dividend106) <- c("公司代號名稱", "資料來源", "期別", "董事會決議通過股利分派日", "股東會日期", "期初未分配盈餘or待彌補虧損元", "本期淨利淨損元", "可分配盈餘元", "分配後期末未分配盈餘元", "股東配發s盈餘分配之現金股利元股", "股東配發s法定盈餘公積and資本公積發放之現金元股", "股東配發s股東配發之現金股利總金額元", "股東配發s盈餘轉增資配股元股", "股東配發s法定盈餘公積and資本公積轉增資配股元股", "股東配發s股東配股總股數股", "普通股每股面額")
-Dividend106 <- Dividend106 %>% select(公司代號名稱, 股東配發s盈餘分配之現金股利元股)
+Dividend_last_year <- read.csv(file = "Dividend Data/Dividend106.csv", header = TRUE, row.names = NULL, encoding = "UTF-8", sep = ",", dec = ".", quote = "\"", comment.char = "") %>% as.tibble
+names(Dividend_last_year) <- c("公司代號名稱", "資料來源", "期別", "董事會決議通過股利分派日", "股東會日期", "期初未分配盈餘or待彌補虧損元", "本期淨利淨損元", "可分配盈餘元", "分配後期末未分配盈餘元", "股東配發s盈餘分配之現金股利元股", "股東配發s法定盈餘公積and資本公積發放之現金元股", "股東配發s股東配發之現金股利總金額元", "股東配發s盈餘轉增資配股元股", "股東配發s法定盈餘公積and資本公積轉增資配股元股", "股東配發s股東配股總股數股", "普通股每股面額")
+Dividend_last_year <- Dividend_last_year %>% select(公司代號名稱, 股東配發s盈餘分配之現金股利元股)
 GetCompany <- function(string) {
     strsplit(as.character(string), split = "-") %>% .[[1]] %>% .[1] %>% trimws
-
 }
 
-Dividend106 <- Dividend106 %>% mutate(公司代號 = as.character(map(公司代號名稱, GetCompany))) %>% select(-公司代號名稱)
-Dividend106 <- Dividend106 %>% mutate(股東配發s盈餘分配之現金股利元股 = 股東配發s盈餘分配之現金股利元股 %>% as.character %>% as.numeric)
-Dividend106 <- Dividend106 %>% filter(!is.na(股東配發s盈餘分配之現金股利元股))
+Dividend_last_year <- Dividend_last_year %>% mutate(公司代號 = as.character(map(公司代號名稱, GetCompany))) %>% select(-公司代號名稱)
+Dividend_last_year <- Dividend_last_year %>% mutate(股東配發s盈餘分配之現金股利元股 = 股東配發s盈餘分配之現金股利元股 %>% as.character %>% as.numeric)
+Dividend_last_year <- Dividend_last_year %>% filter(!is.na(股東配發s盈餘分配之現金股利元股))
 
 #Dividend Predict
 
-DividendPredict<-ISReport %>% mutate(公司代號 = as.character(公司代號)) %>% left_join(Dividend106)
-DividendPredict <- DividendPredict %>% mutate(Profit107_4_P = Profit107_3 * Profit106_4 / Profit106_3, DivideRatio = 股東配發s盈餘分配之現金股利元股 / Profit106_4)
-DividendPredict <- DividendPredict %>% mutate(DividendPredict = Profit107_4_P * DivideRatio)
+DividendPredict<-ISReport %>% mutate(公司代號 = as.character(公司代號)) %>% left_join(Dividend_last_year)
+DividendPredict <- DividendPredict %>% mutate(Profit_this_year_4_P = Profit_this_year_3 * Profit_last_year_4 / Profit_last_year_3, DivideRatio = 股東配發s盈餘分配之現金股利元股 / Profit_last_year_4)
+DividendPredict <- DividendPredict %>% mutate(DividendPredict = Profit_this_year_4_P * DivideRatio)
 
 
 
