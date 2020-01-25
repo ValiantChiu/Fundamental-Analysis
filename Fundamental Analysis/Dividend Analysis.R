@@ -140,6 +140,9 @@ GetNumericReport <- function(Report) {
     return(Report)
 }
 
+CleanData <- function(df) {
+    df %>% map(~as.numeric(gsub(pattern = ",", replacement = "", .))) %>% as.tibble
+}
 
 #Income Statement
 GetIS <- function(Year,Season) {
@@ -150,15 +153,13 @@ GetIS <- function(Year,Season) {
     Sys.setlocale("LC_ALL", "cht")
     IS
 }
-IS<-GetIS('107','03')
+
+#IS<-GetIS('107','03')
 Sys.setlocale("LC_ALL", "cht")
 
 
 #saveRDS(IS_last_year_3, file = "IS_last_year_3.rds")
 
-CleanData <- function(df) {
-    df %>% map(~as.numeric(gsub(pattern = ",", replacement = "", .))) %>% as.tibble
-}
 
 IS_last_year_3 <- GetIS('107', '03')
 IS_last_year_4 <- GetIS('107', '04')
@@ -196,7 +197,7 @@ ISReport %>% View
 
 #Dividend
 
-Dividend_last_year <- read.csv(file = "Dividend Data/Dividend106.csv", header = TRUE, row.names = NULL, encoding = "UTF-8", sep = ",", dec = ".", quote = "\"", comment.char = "") %>% as.tibble
+Dividend_last_year <- read.csv(file = "Dividend Data/Dividend107.csv", header = TRUE, row.names = NULL, encoding = "UTF-8", sep = ",", dec = ".", quote = "\"", comment.char = "") %>% as.tibble
 names(Dividend_last_year) <- c("公司代號名稱", "資料來源", "期別", "董事會決議通過股利分派日", "股東會日期", "期初未分配盈餘or待彌補虧損元", "本期淨利淨損元", "可分配盈餘元", "分配後期末未分配盈餘元", "股東配發s盈餘分配之現金股利元股", "股東配發s法定盈餘公積and資本公積發放之現金元股", "股東配發s股東配發之現金股利總金額元", "股東配發s盈餘轉增資配股元股", "股東配發s法定盈餘公積and資本公積轉增資配股元股", "股東配發s股東配股總股數股", "普通股每股面額")
 Dividend_last_year <- Dividend_last_year %>% select(公司代號名稱, 股東配發s盈餘分配之現金股利元股)
 GetCompany <- function(string) {
@@ -212,20 +213,46 @@ Dividend_last_year <- Dividend_last_year %>% filter(!is.na(股東配發s盈餘分配之現
 DividendPredict<-ISReport %>% mutate(公司代號 = as.character(公司代號)) %>% left_join(Dividend_last_year)
 DividendPredict <- DividendPredict %>% mutate(Profit_this_year_4_P = Profit_this_year_3 * Profit_last_year_4 / Profit_last_year_3, DivideRatio = 股東配發s盈餘分配之現金股利元股 / Profit_last_year_4)
 DividendPredict <- DividendPredict %>% mutate(DividendPredict = Profit_this_year_4_P * DivideRatio)
-
-
+saveRDS(DividendPredict,file = "Dividend Data/DividendPredict_2019.rds")
+#DividendPredict<-readRDS("Dividend Data/DividendPredict.rds")
 
 #Price
-Price <- readRDS(file = "Price201902.rds")
-Price<-Price %>% unnest %>% group_by(公司代號) %>% filter(日期 == max(日期)) %>% select(公司代號, 收盤價)
+GetPrice <- function(Year, Month, Stock) {
+    print(Stock)
+    #Purl <- paste0("https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_result.php?l=zh-tw&d=", Year, "/", Month, "/01&stkno=", Stock, "")
+    Purl <- paste0("https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=", Year, "", Month, "01&stockNo=", Stock, "")
+    Price <- POST(Purl)
+    Price <- Price %>% content(as = "text") %>% fromJSON
+    PriceData <- Price$data %>% as.tibble
+    names(PriceData) <- Price$fields
+    Sys.sleep(sample(4:8, size = 1))
+    PriceData
+}
+DealWithDate <- function(Price) {
+    Price %>% mutate(BuyDate = str_split(日期, "/")) %>%
+        mutate(year = as.integer(map(BuyDate, ~ .[1])) + 1911,
+           month = as.character(map(BuyDate, ~ .[2])),
+           day = as.character(map(BuyDate, ~ .[3]))) %>%
+           mutate(Date = ymd(paste0(year, month, day))) %>%
+           select(-year, - month, - day, - 日期, - BuyDate)
+}
+DividendPredictPrice <- DividendPredict %>% mutate(Price = pmap(list('2020', '01', 公司代號), GetPrice))
+
+#Price <- readRDS(file = "Price201902.rds")
+#saveRDS(DividendPredictPrice, file = "Dividend Data/DividendPredictPrice_2019.rds")
+DividendPredictPrice <- readRDS("Dividend Data/DividendPredictPrice.rds")
+Price<-DividendPredictPrice %>% select(公司代號, Price) %>% unnest(Price) %>% group_by(公司代號) %>% filter(日期 == max(日期)) %>% select(公司代號, 收盤價)
+
 
 
 #All Report
 
-InterestRateReport <- DividendPredict %>% left_join(Price) %>% mutate(InterestRatePercent = DividendPredict / 收盤價)
+InterestRateReport <- DividendPredict %>% left_join(Price) %>% mutate(InterestRatePercent = DividendPredict / as.numeric(收盤價))
 
+InterestRateReport %>% View
 InterestRateReport %<>% mutate(InterestRateOld = 股東配發s盈餘分配之現金股利元股 / 收盤價) %>% arrange(desc(InterestRatePercent))
 
-saveRDS(InterestRateReport, file = "InterestRateReport.rds")
-
+saveRDS(InterestRateReport, file = "Dividend Data/InterestRateReport_2019.rds")
+write.csv(InterestRateReport, file = "Dividend Data/InterestRateReport.csv")
+readRDS("Dividend Data/InterestRateReport.rds")
 readRDS(file = "InterestRateReport.rds")
